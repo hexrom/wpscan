@@ -12,17 +12,17 @@ jobs:
     - name: Checkout Repository
       uses: actions/checkout@v2
 
-    - name: Set Permissions for Entrypoint Script
-      run: chmod +x entrypoint.sh
-
     - name: Build Docker Image
       run: |
         docker build --build-arg WPSCAN_API_TOKEN=${{ secrets.WPSCAN_API_TOKEN }} -t wpscan-temp .
 
-    - name: Save Docker Image for Trivy Scan
-      run: docker save wpscan-temp -o wpscan-temp.tar
+    - name: Save Docker Image for Scanning
+      run: |
+        docker save wpscan-temp -o wpscan-temp.tar
 
     - name: Scan the Docker image with Trivy
-      run: trivy image --input wpscan-temp.tar --severity HIGH,CRITICAL
+      run: |
+        trivy image --input wpscan-temp.tar --severity HIGH,CRITICAL
+
 
 
