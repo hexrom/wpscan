@@ -6,32 +6,46 @@ on:
       - main
 
 jobs:
-  build-and-push:
+  build-sign-and-push:
     runs-on: ubuntu-latest
     steps:
     - name: Checkout Repository
       uses: actions/checkout@v2
 
-    - name: Install Trivy
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y apt-transport-https gnupg lsb-release
-        curl -fsSL https://aquasecurity.github.io/trivy-repo/deb/public.key | sudo apt-key add -
-        echo deb https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main | sudo tee -a /etc/apt/sources.list.d/trivy.list
-        sudo apt-get update
-        sudo apt-get install trivy
-
     - name: Build Docker Image
       run: |
-        docker build --build-arg WPSCAN_API_TOKEN=${{ secrets.WPSCAN_API_TOKEN }} -t wpscan-temp .
+        docker build --build-arg WPSCAN_API_TOKEN=${{ secrets.WPSCAN_API_TOKEN }} -t wpscan-appsec .
 
-    - name: Save Docker Image for Scanning
+    - name: Run Docker Bench Security
       run: |
-        docker save wpscan-temp -o wpscan-temp.tar
+        docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v /usr/lib/systemd:/usr/lib/systemd docker/docker-bench-security
 
-    - name: Scan the Docker image with Trivy
+    - name: Install Cosign
       run: |
-        trivy image --input wpscan-temp.tar --severity HIGH,CRITICAL
+        wget https://github.com/sigstore/cosign/releases/download/v1.3.1/cosign-linux-amd64 -O cosign
+        chmod +x cosign
+        sudo mv cosign /usr/local/bin/cosign
+
+    - name: Sign Docker Image with Cosign
+      run: |
+        cosign generate-key-pair
+        cosign sign --key cosign.key wpscan-appsec
+
+    - name: Configure AWS Credentials
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ secrets.AWS_REGION }}
+
+    - name: Login to Amazon ECR
+      run: |
+        aws ecr get-login-password --region ${{ secrets.AWS_REGION }} | docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com
+
+    - name: Tag and Push to AWS ECR
+      run: |
+        docker tag wpscan-appsec ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/wpscan-appsec:latest
+        docker push ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/wpscan-appsec:latest
 
 
 
