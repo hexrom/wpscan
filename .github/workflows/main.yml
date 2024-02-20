@@ -26,16 +26,11 @@ jobs:
         chmod +x cosign
         sudo mv cosign /usr/local/bin/cosign
 
-    - name: Import Cosign Private Key
-      env:
-        COSIGN_PRIVATE_KEY: ${{ secrets.COSIGN_PRIVATE_KEY }}
-      run: |
-        echo "$COSIGN_PRIVATE_KEY" > cosign.key
-        chmod 600 cosign.key
-
     - name: Sign Docker Image with Cosign
+      env:
+        COSIGN_PASSWORD: ""
       run: |
-        cosign sign --key cosign.key wpscan-appsec
+        echo "${{ secrets.COSIGN_PRIVATE_KEY }}" | cosign sign --key /dev/stdin wpscan-appsec
 
     - name: Configure AWS Credentials
       uses: aws-actions/configure-aws-credentials@v1
