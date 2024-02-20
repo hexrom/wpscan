@@ -1,0 +1,19 @@
+name: WPScan Golden Image
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v2
+
+    - name: Scan the Docker image with Trivy
+      run: |
+        docker build --quiet --build-arg WPSCAN_API_TOKEN=${{ secrets.WPSCAN_API_TOKEN }} -t wpscan-temp .
+        docker save wpscan-temp | trivy image --input - --severity HIGH,CRITICAL
+
