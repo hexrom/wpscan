@@ -34,6 +34,8 @@ jobs:
         chmod 600 cosign.key
 
     - name: Sign Docker Image with Cosign
+      env:
+        COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSPHRASE }}
       run: |
         cosign sign --key cosign.key wpscan-appsec
 
