@@ -12,6 +12,15 @@ jobs:
     - name: Checkout Repository
       uses: actions/checkout@v2
 
+    - name: Install Trivy
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y apt-transport-https gnupg lsb-release
+        curl -fsSL https://aquasecurity.github.io/trivy-repo/deb/public.key | sudo apt-key add -
+        echo deb https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main | sudo tee -a /etc/apt/sources.list.d/trivy.list
+        sudo apt-get update
+        sudo apt-get install trivy
+
     - name: Build Docker Image
       run: |
         docker build --build-arg WPSCAN_API_TOKEN=${{ secrets.WPSCAN_API_TOKEN }} -t wpscan-temp .
@@ -23,6 +32,7 @@ jobs:
     - name: Scan the Docker image with Trivy
       run: |
         trivy image --input wpscan-temp.tar --severity HIGH,CRITICAL
+
 
 
 
