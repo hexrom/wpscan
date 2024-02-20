@@ -1,1 +1,3 @@
 # golden-wpscan
+
+Signed WPScan 
