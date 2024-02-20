@@ -44,19 +44,23 @@ jobs:
       run: |
         aws ecr get-login-password --region ${{ secrets.AWS_REGION }} | docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com
 
-    - name: Tag for AWS ECR
+    - name: Tag and Push to AWS ECR
       run: |
         docker tag wpscan-appsec ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/wpscan-appsec:latest
+        docker push ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/wpscan-appsec:latest
 
-    - name: Sign Docker Image with Cosign
+    - name: Get Image Digest
+      id: get_digest
+      run: |
+        digest=$(docker inspect --format='{{index .RepoDigests 0}}' ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/wpscan-appsec:latest)
+        echo "::set-output name=digest::$digest"
+
+    - name: Sign Docker Image with Cosign using Digest
       env:
         COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSPHRASE }}
       run: |
-        cosign sign --key cosign.key ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/wpscan-appsec:latest
+        cosign sign --key cosign.key ${{ steps.get_digest.outputs.digest }}
 
-    - name: Push to AWS ECR
-      run: |
-        docker push ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/wpscan-appsec:latest
 
 
 
