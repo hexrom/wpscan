@@ -10,9 +10,7 @@ ENV WPSCAN_API_TOKEN=${WPSCAN_API_TOKEN}
 # Copy the custom entrypoint script into the container
 COPY entrypoint.sh /entrypoint.sh
 
-# Make the custom entrypoint script executable
-RUN chmod +x /entrypoint.sh
+# Set the custom entrypoint script to be run with `sh`
+ENTRYPOINT ["sh", "/entrypoint.sh"]
 
-# Set the custom entrypoint script as the entrypoint
-ENTRYPOINT ["/entrypoint.sh"]
 
