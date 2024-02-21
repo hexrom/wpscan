@@ -8,7 +8,7 @@ on:
       - 'v*'
 
 jobs:
-  build-sign-and-push:
+  build-and-push:
     runs-on: ubuntu-latest
     steps:
     - name: Checkout Repository
@@ -32,19 +32,6 @@ jobs:
       run: |
         docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v /usr/lib/systemd:/usr/lib/systemd docker/docker-bench-security
 
-    - name: Install Cosign
-      run: |
-        wget https://github.com/sigstore/cosign/releases/latest/download/cosign-linux-amd64 -O cosign
-        chmod +x cosign
-        sudo mv cosign /usr/local/bin/cosign
-
-    - name: Import Cosign Private Key
-      env:
-        COSIGN_PRIVATE_KEY: ${{ secrets.COSIGN_PRIVATE_KEY }}
-      run: |
-        echo "$COSIGN_PRIVATE_KEY" > cosign.key
-        chmod 600 cosign.key
-
     - name: Configure AWS Credentials
       uses: aws-actions/configure-aws-credentials@v1
       with:
@@ -61,11 +48,6 @@ jobs:
         docker tag wpscan-appsec:${{ steps.set_tag.outputs.tag }} ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/wpscan-appsec:${{ steps.set_tag.outputs.tag }}
         docker push ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/wpscan-appsec:${{ steps.set_tag.outputs.tag }}
 
-    - name: Sign Docker Image with Cosign
-      env:
-        COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSPHRASE }}
-      run: |
-        cosign sign --key cosign.key ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/wpscan-appsec:${{ steps.set_tag.outputs.tag }}
 
 
 
