@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - main
+    tags:
+      - 'v*'
 
 jobs:
   build-sign-and-push:
@@ -12,9 +14,19 @@ jobs:
     - name: Checkout Repository
       uses: actions/checkout@v2
 
+    - name: Set Image Tag
+      id: set_tag
+      run: |
+        if [[ $GITHUB_REF == refs/tags/* ]]; then
+          VERSION=${GITHUB_REF#refs/tags/}
+          echo "::set-output name=tag::$VERSION"
+        else
+          echo "::set-output name=tag::latest"
+        fi
+
     - name: Build Docker Image
       run: |
-        docker build --build-arg WPSCAN_API_TOKEN=${{ secrets.WPSCAN_API_TOKEN }} -t wpscan-appsec .
+        docker build --build-arg WPSCAN_API_TOKEN=${{ secrets.WPSCAN_API_TOKEN }} -t wpscan-appsec:${{ steps.set_tag.outputs.tag }} .
 
     - name: Run Docker Bench Security
       run: |
@@ -46,20 +58,15 @@ jobs:
 
     - name: Tag and Push to AWS ECR
       run: |
-        docker tag wpscan-appsec ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/wpscan-appsec:latest
-        docker push ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/wpscan-appsec:latest
+        docker tag wpscan-appsec:${{ steps.set_tag.outputs.tag }} ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/wpscan-appsec:${{ steps.set_tag.outputs.tag }}
+        docker push ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/wpscan-appsec:${{ steps.set_tag.outputs.tag }}
 
-    - name: Get Image Digest
-      id: get_digest
-      run: |
-        digest=$(docker inspect --format='{{index .RepoDigests 0}}' ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/wpscan-appsec:latest)
-        echo "::set-output name=digest::$digest"
-
-    - name: Sign Docker Image with Cosign using Digest
+    - name: Sign Docker Image with Cosign
       env:
         COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSPHRASE }}
       run: |
-        cosign sign --key cosign.key ${{ steps.get_digest.outputs.digest }}
+        cosign sign --key cosign.key ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/wpscan-appsec:${{ steps.set_tag.outputs.tag }}
+
 
 
 
