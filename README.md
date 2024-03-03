@@ -1,3 +1,3 @@
-# golden-wpscan
+# WPScan Golden Image
 
-Signed WPScan 
+WPScan image with a standardized scan configuration
